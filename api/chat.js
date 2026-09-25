@@ -1,6 +1,3 @@
-// Vercel Edge Function — proxies chat requests to xAI Grok.
-// The API key stays on the server and is never exposed to the browser.
-
 export const config = { runtime: 'edge' };
 
 export default async function handler(req) {
@@ -21,9 +18,7 @@ export default async function handler(req) {
   if (!apiKey) {
     return new Response(
       JSON.stringify({
-        error: {
-          message: 'Server is missing XAI_API_KEY.'
-        }
+        error: { message: 'XAI_API_KEY is missing from Vercel.' }
       }),
       {
         status: 500,
@@ -36,10 +31,10 @@ export default async function handler(req) {
 
   try {
     body = await req.json();
-  } catch (e) {
+  } catch {
     return new Response(
       JSON.stringify({
-        error: { message: 'Invalid request body' }
+        error: { message: 'Invalid JSON request.' }
       }),
       {
         status: 400,
@@ -48,8 +43,25 @@ export default async function handler(req) {
     );
   }
 
-  // Force a valid xAI model.
-  body.model = 'grok-4.7';
+  // Only send fields that the xAI Chat Completions API needs.
+  const cleanBody = {
+    model: 'grok-4.7',
+    messages: body.messages
+  };
+
+  if (!Array.isArray(cleanBody.messages)) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          message: 'Frontend did not send a valid messages array.'
+        }
+      }),
+      {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
 
   const grokRes = await fetch(
     'https://api.x.ai/v1/chat/completions',
@@ -59,17 +71,34 @@ export default async function handler(req) {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + apiKey
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(cleanBody)
     }
   );
 
-  const responseHeaders = {
-    'Content-Type':
-      grokRes.headers.get('Content-Type') || 'application/json'
-  };
+  // Read the actual xAI error instead of hiding it.
+  const responseText = await grokRes.text();
 
-  return new Response(grokRes.body, {
-    status: grokRes.status,
-    headers: responseHeaders
+  if (!grokRes.ok) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          message: `xAI returned HTTP ${grokRes.status}`,
+          details: responseText
+        }
+      }),
+      {
+        status: grokRes.status,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  }
+
+  return new Response(responseText, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json'
+    }
   });
 }
