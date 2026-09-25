@@ -22,8 +22,7 @@ export default async function handler(req) {
     return new Response(
       JSON.stringify({
         error: {
-          message:
-            'Server is missing XAI_API_KEY. Add it in Vercel → Settings → Environment Variables.'
+          message: 'Server is missing XAI_API_KEY.'
         }
       }),
       {
@@ -49,8 +48,8 @@ export default async function handler(req) {
     );
   }
 
-  // Make sure the request uses an xAI/Grok model.
-  body.model = body.model || 'grok-4.7';
+  // Force a valid xAI model.
+  body.model = 'grok-4.7';
 
   const grokRes = await fetch(
     'https://api.x.ai/v1/chat/completions',
@@ -68,23 +67,6 @@ export default async function handler(req) {
     'Content-Type':
       grokRes.headers.get('Content-Type') || 'application/json'
   };
-
-  // Pass rate-limit information back to the frontend.
-  [
-    'x-ratelimit-limit-requests',
-    'x-ratelimit-remaining-requests',
-    'x-ratelimit-reset-requests',
-    'x-ratelimit-limit-tokens',
-    'x-ratelimit-remaining-tokens',
-    'x-ratelimit-reset-tokens',
-    'retry-after'
-  ].forEach((header) => {
-    const value = grokRes.headers.get(header);
-
-    if (value) {
-      responseHeaders[header] = value;
-    }
-  });
 
   return new Response(grokRes.body, {
     status: grokRes.status,
