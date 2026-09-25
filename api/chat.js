@@ -1,104 +1,48 @@
-export const config = { runtime: 'edge' };
-
-export default async function handler(req) {
-  if (req.method !== 'POST') {
-    return new Response(
-      JSON.stringify({
-        error: { message: 'Method not allowed' }
-      }),
-      {
-        status: 405,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+const grokRes = await fetch(
+  'https://api.x.ai/v1/chat/completions',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey
+    },
+    body: JSON.stringify(cleanBody)
   }
+);
 
-  const apiKey = process.env.XAI_API_KEY;
+const responseText = await grokRes.text();
 
-  if (!apiKey) {
-    return new Response(
-      JSON.stringify({
-        error: { message: 'XAI_API_KEY is missing from Vercel.' }
-      }),
-      {
-        status: 500,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
-  }
-
-  let body;
+if (!grokRes.ok) {
+  let details = responseText;
 
   try {
-    body = await req.json();
+    const parsed = JSON.parse(responseText);
+    details =
+      parsed?.error?.message ||
+      parsed?.message ||
+      responseText;
   } catch {
-    return new Response(
-      JSON.stringify({
-        error: { message: 'Invalid JSON request.' }
-      }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+    // Keep the raw response if it isn't JSON.
   }
 
-  // Only send fields that the xAI Chat Completions API needs.
-  const cleanBody = {
-    model: 'grok-4.7',
-    messages: body.messages
-  };
-
-  if (!Array.isArray(cleanBody.messages)) {
-    return new Response(
-      JSON.stringify({
-        error: {
-          message: 'Frontend did not send a valid messages array.'
-        }
-      }),
-      {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' }
+  return new Response(
+    JSON.stringify({
+      error: {
+        message: `xAI error ${grokRes.status}: ${details}`
       }
-    );
-  }
-
-  const grokRes = await fetch(
-    'https://api.x.ai/v1/chat/completions',
+    }),
     {
-      method: 'POST',
+      status: grokRes.status,
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + apiKey
-      },
-      body: JSON.stringify(cleanBody)
+        'Content-Type': 'application/json'
+      }
     }
   );
-
-  // Read the actual xAI error instead of hiding it.
-  const responseText = await grokRes.text();
-
-  if (!grokRes.ok) {
-    return new Response(
-      JSON.stringify({
-        error: {
-          message: `xAI returned HTTP ${grokRes.status}`,
-          details: responseText
-        }
-      }),
-      {
-        status: grokRes.status,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-  }
-
-  return new Response(responseText, {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json'
-    }
-  });
 }
+
+return new Response(responseText, {
+  status: 200,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
