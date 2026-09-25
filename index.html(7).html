@@ -1419,11 +1419,10 @@
   }
 
   const AVAILABLE_MODELS = [
-    { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B — best quality' },
-    { id: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B — fastest' },
-    { id: 'qwen/qwen3.6-27b', label: 'Qwen3.6 27B — alternative' }
-  ];
-  const DEFAULT_MODEL = AVAILABLE_MODELS[0].id;
+  { id: 'grok-4.7', label: 'Grok 4.7 — latest' }
+];
+
+const DEFAULT_MODEL = 'grok-4.7';
 
   const SESSION_STORAGE_KEY = 'chatbot-remembered-session';
 
