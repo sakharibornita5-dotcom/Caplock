@@ -18,7 +18,7 @@ export default async function handler(req) {
     );
   }
 
-  const apiKey = process.env.XAI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY
 
   if (!apiKey) {
     return new Response(
@@ -64,7 +64,7 @@ export default async function handler(req) {
 
   try {
    const xaiRes = await fetch(
-  'https://api.x.ai/v1/chat/completions',
+  'https://api.groq.com/openai/v1/chat/completions',
   {
     method: 'POST',
     headers: {
