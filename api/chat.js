@@ -1,4 +1,3 @@
-// Vercel Edge Function — proxies chat requests to xAI/Grok
 export const config = {
   runtime: 'edge'
 };
@@ -11,27 +10,23 @@ export default async function handler(req) {
       }),
       {
         status: 405,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       }
     );
   }
 
-  const apiKey = process.env.GROQ_API_KEY
+  const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
     return new Response(
       JSON.stringify({
         error: {
-          message: 'XAI_API_KEY is missing from Vercel.'
+          message: 'GROQ_API_KEY is missing from Vercel.'
         }
       }),
       {
         status: 500,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       }
     );
   }
@@ -43,49 +38,45 @@ export default async function handler(req) {
   } catch {
     return new Response(
       JSON.stringify({
-        error: {
-          message: 'Invalid JSON request body.'
-        }
+        error: { message: 'Invalid JSON request body.' }
       }),
       {
         status: 400,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Content-Type': 'application/json' }
       }
     );
   }
 
-  const xaiBody = {
-    model: 'grok-4.7',
+  const groqBody = {
+    model: 'openai/gpt-oss-120b',
     messages: body.messages,
     stream: true
   };
 
   try {
-   const xaiRes = await fetch(
-  'https://api.groq.com/openai/v1/chat/completions',
-  {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-        body: JSON.stringify(xaiBody)
+    const groqRes = await fetch(
+      'https://api.groq.com/openai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(groqBody)
       }
     );
 
-    if (!xaiRes.ok) {
-      const detail = await xaiRes.text();
+    if (!groqRes.ok) {
+      const detail = await groqRes.text();
 
       return new Response(
         JSON.stringify({
           error: {
-            message: `xAI returned HTTP ${xaiRes.status}: ${detail}`
+            message: `Groq returned HTTP ${groqRes.status}: ${detail}`
           }
         }),
         {
-          status: xaiRes.status,
+          status: groqRes.status,
           headers: {
             'Content-Type': 'application/json'
           }
@@ -93,11 +84,11 @@ export default async function handler(req) {
       );
     }
 
-    return new Response(xaiRes.body, {
+    return new Response(groqRes.body, {
       status: 200,
       headers: {
         'Content-Type':
-          xaiRes.headers.get('Content-Type') || 'text/event-stream'
+          groqRes.headers.get('Content-Type') || 'text/event-stream'
       }
     });
 
@@ -105,8 +96,7 @@ export default async function handler(req) {
     return new Response(
       JSON.stringify({
         error: {
-          message:
-            error?.message || 'Failed to connect to xAI.'
+          message: error?.message || 'Failed to connect to Groq.'
         }
       }),
       {
