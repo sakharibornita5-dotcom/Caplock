@@ -64,7 +64,7 @@ export default async function handler(req) {
 
   try {
     const xaiRes = await fetch(
-      'https://api.x.ai/v1/chat/completions',
+      https://api.x.ai/v1/chat/completions
       {
         method: 'POST',
         headers: {
