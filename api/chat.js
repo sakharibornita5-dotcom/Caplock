@@ -1,55 +1,120 @@
-// Vercel Edge Function — proxies chat requests to Groq using a server-side
-// API key (set in Vercel's Environment Variables, never exposed to the browser).
-export const config = { runtime: 'edge' };
+// Vercel Edge Function — proxies chat requests to xAI/Grok
+export const config = {
+  runtime: 'edge'
+};
 
 export default async function handler(req) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: { message: 'Method not allowed' } }), {
-      status: 405,
-      headers: { 'Content-Type': 'application/json' }
-    });
+    return new Response(
+      JSON.stringify({
+        error: { message: 'Method not allowed' }
+      }),
+      {
+        status: 405,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
   }
 
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.XAI_API_KEY;
+
   if (!apiKey) {
     return new Response(
-      JSON.stringify({ error: { message: 'Server is missing GROQ_API_KEY. Set it in Vercel → Settings → Environment Variables.' } }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        error: {
+          message: 'XAI_API_KEY is missing from Vercel.'
+        }
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
     );
   }
 
   let body;
+
   try {
     body = await req.json();
-  } catch (e) {
-    return new Response(JSON.stringify({ error: { message: 'Invalid request body' } }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' }
-    });
+  } catch {
+    return new Response(
+      JSON.stringify({
+        error: {
+          message: 'Invalid JSON request body.'
+        }
+      }),
+      {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
   }
 
-  const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + apiKey
-    },
-    body: JSON.stringify(body)
-  });
-
-  const passthroughHeaders = {
-    'Content-Type': groqRes.headers.get('Content-Type') || 'application/json'
+  const xaiBody = {
+    model: 'grok-4.7',
+    messages: body.messages,
+    stream: true
   };
-  // Relay rate-limit info so the client can warn users before they hit a hard limit.
-  ['x-ratelimit-limit-requests', 'x-ratelimit-remaining-requests', 'x-ratelimit-reset-requests',
-   'x-ratelimit-limit-tokens', 'x-ratelimit-remaining-tokens', 'x-ratelimit-reset-tokens',
-   'retry-after'].forEach((h) => {
-    const v = groqRes.headers.get(h);
-    if (v) passthroughHeaders[h] = v;
-  });
 
-  return new Response(groqRes.body, {
-    status: groqRes.status,
-    headers: passthroughHeaders
-  });
+  try {
+    const xaiRes = await fetch(
+      'https://api.x.ai/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(xaiBody)
+      }
+    );
+
+    if (!xaiRes.ok) {
+      const detail = await xaiRes.text();
+
+      return new Response(
+        JSON.stringify({
+          error: {
+            message: `xAI returned HTTP ${xaiRes.status}: ${detail}`
+          }
+        }),
+        {
+          status: xaiRes.status,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+
+    return new Response(xaiRes.body, {
+      status: 200,
+      headers: {
+        'Content-Type':
+          xaiRes.headers.get('Content-Type') || 'text/event-stream'
+      }
+    });
+
+  } catch (error) {
+    return new Response(
+      JSON.stringify({
+        error: {
+          message:
+            error?.message || 'Failed to connect to xAI.'
+        }
+      }),
+      {
+        status: 502,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+  }
 }
