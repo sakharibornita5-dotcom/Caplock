@@ -63,14 +63,14 @@ export default async function handler(req) {
   };
 
   try {
-    const xaiRes = await fetch(
-      https://api.x.ai/v1/chat/completions
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
+   const xaiRes = await fetch(
+  'https://api.x.ai/v1/chat/completions',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
         body: JSON.stringify(xaiBody)
       }
     );
